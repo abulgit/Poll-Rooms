@@ -2,6 +2,7 @@ import { Router } from "express";
 import { createPoll, getPollById } from "../services/pollService";
 import { validate, validateParams, createPollSchema, pollIdParamSchema } from "../middleware/validator";
 import { pollCreationRateLimiter } from "../middleware/rateLimiter";
+import { CORS_ORIGIN } from "../lib/constants";
 
 const router = Router();
 
@@ -13,7 +14,7 @@ router.post("/", pollCreationRateLimiter, validate(createPollSchema), async (req
 
     const { pollId } = await createPoll(question, options, creatorIp);
 
-    const shareUrl = `${req.protocol}://${req.get("host")}/poll/${pollId}`;
+    const shareUrl = `${CORS_ORIGIN}/poll/${pollId}`;
 
     res.status(201).json({ pollId, shareUrl });
   } catch (err) {
