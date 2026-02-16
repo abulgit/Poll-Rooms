@@ -5,30 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { getPoll, submitVote } from "@/lib/api";
+import { getFingerprint } from "@/lib/fingerprint";
 import { useRealtimePoll } from "@/hooks/useRealtimePoll";
 import { toast } from "sonner";
 import { CheckCircle, Copy, Loader2, Radio, Vote, Wifi, WifiOff } from "lucide-react";
 import type { Poll, PollOption } from "@/types";
-
-function generateFingerprint(): string {
-  const nav = window.navigator;
-  const raw = [
-    nav.userAgent,
-    nav.language,
-    screen.width,
-    screen.height,
-    screen.colorDepth,
-    new Date().getTimezoneOffset(),
-    nav.hardwareConcurrency,
-  ].join("|");
-
-  let hash = 0;
-  for (let i = 0; i < raw.length; i++) {
-    const char = raw.charCodeAt(i);
-    hash = ((hash << 5) - hash + char) | 0;
-  }
-  return Math.abs(hash).toString(16).padStart(32, "a");
-}
 
 export default function ViewPollPage() {
   const { pollId } = useParams<{ pollId: string }>();
@@ -71,7 +52,7 @@ export default function ViewPollPage() {
 
     setIsVoting(true);
     try {
-      const fingerprint = generateFingerprint();
+      const fingerprint = getFingerprint();
       const result = await submitVote(pollId, {
         optionId: selectedOption,
         fingerprint,
