@@ -10,12 +10,24 @@ import { toast } from "sonner";
 import { CheckCircle, Copy, Loader2, Radio, Vote, Wifi, WifiOff } from "lucide-react";
 import type { Poll, PollOption } from "@/types";
 
-// TODO: Replace with real fingerprinting (e.g. FingerprintJS) for production.
-// Random fingerprint for dev testing — allows multiple votes from the same browser.
 function generateFingerprint(): string {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+  const nav = window.navigator;
+  const raw = [
+    nav.userAgent,
+    nav.language,
+    screen.width,
+    screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    nav.hardwareConcurrency,
+  ].join("|");
+
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    const char = raw.charCodeAt(i);
+    hash = ((hash << 5) - hash + char) | 0;
+  }
+  return Math.abs(hash).toString(16).padStart(32, "a");
 }
 
 export default function ViewPollPage() {
@@ -47,13 +59,12 @@ export default function ViewPollPage() {
     fetchPoll();
   }, [pollId]);
 
-  // TODO: Re-enable localStorage vote tracking for production
-  // useEffect(() => {
-  //   if (pollId) {
-  //     const voted = localStorage.getItem(`voted:${pollId}`);
-  //     if (voted) setHasVoted(true);
-  //   }
-  // }, [pollId]);
+  useEffect(() => {
+    if (pollId) {
+      const voted = localStorage.getItem(`voted:${pollId}`);
+      if (voted) setHasVoted(true);
+    }
+  }, [pollId]);
 
   async function handleVote() {
     if (!pollId || !selectedOption) return;
@@ -67,13 +78,15 @@ export default function ViewPollPage() {
       });
 
       if (result.success) {
-        // TODO: Re-enable for production:
-        // setHasVoted(true);
-        // localStorage.setItem(`voted:${pollId}`, "true");
-        setSelectedOption(null);
+        setHasVoted(true);
+        localStorage.setItem(`voted:${pollId}`, "true");
         toast.success("Vote submitted!");
       } else {
         toast.error(result.error ?? "Failed to vote");
+        if (result.error?.includes("already voted")) {
+          setHasVoted(true);
+          localStorage.setItem(`voted:${pollId}`, "true");
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to vote");
@@ -149,8 +162,28 @@ export default function ViewPollPage() {
           <CardTitle className="text-xl mt-2">{displayQuestion}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Voting options */}
-          {!hasVoted && (
+          {hasVoted ? (
+            <>
+              {displayOptions.map((option: PollOption) => {
+                const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
+                return (
+                  <div key={option.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{option.text}</span>
+                      <span className="text-muted-foreground">
+                        {option.votes} ({percentage}%)
+                      </span>
+                    </div>
+                    <Progress value={percentage} className="h-2" />
+                  </div>
+                );
+              })}
+              <div className="pt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                You have voted on this poll
+              </div>
+            </>
+          ) : (
             <>
               {displayOptions.map((option: PollOption) => (
                 <button
@@ -187,34 +220,6 @@ export default function ViewPollPage() {
                 )}
               </Button>
             </>
-          )}
-
-          {hasVoted && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              You have voted on this poll
-            </div>
-          )}
-
-          {/* Live results — always visible */}
-          {totalVotes > 0 && (
-            <div className="space-y-3 pt-2 border-t">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Live Results</p>
-              {displayOptions.map((option: PollOption) => {
-                const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
-                return (
-                  <div key={option.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{option.text}</span>
-                      <span className="text-muted-foreground">
-                        {option.votes} ({percentage}%)
-                      </span>
-                    </div>
-                    <Progress value={percentage} className="h-2" />
-                  </div>
-                );
-              })}
-            </div>
           )}
 
           <div className="pt-2 border-t">
