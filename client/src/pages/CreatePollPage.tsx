@@ -104,7 +104,7 @@ export default function CreatePollPage() {
               <Label htmlFor="question">Question</Label>
               <Input
                 id="question"
-                placeholder="What's your favorite programming language?"
+                placeholder="Who's your favorite cricketer?"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 maxLength={500}
@@ -120,7 +120,7 @@ export default function CreatePollPage() {
               {options.map((option, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <Input
-                    placeholder={`Option ${index + 1}`}
+                    placeholder={index === 0 ? "VIRAT" : index === 1 ? "ROHIT" : `Option ${index + 1}`}
                     value={option}
                     onChange={(e) => updateOption(index, e.target.value)}
                     maxLength={200}
