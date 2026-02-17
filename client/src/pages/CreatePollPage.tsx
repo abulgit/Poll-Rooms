@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createPoll } from "@/lib/api";
-import { Plus, Trash2, Vote, Copy, Check, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Copy, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CreatePollPage() {
@@ -93,9 +93,6 @@ export default function CreatePollPage() {
     <div className="min-h-svh flex items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Vote className="h-6 w-6 text-primary" />
-          </div>
           <CardTitle className="text-2xl">Create a Poll</CardTitle>
           <CardDescription>
             Ask a question and add options for people to vote on.

@@ -15,63 +15,40 @@ A full-stack real-time polling app where users create polls, share them via uniq
 
 ### Why SSE over WebSockets?
 
-SSE is simpler, uses standard HTTP, reconnects automatically, and fits perfectly since data only flows server→client. WebSockets would be overkill for this use case.
+SSE is simpler, uses standard HTTP, reconnects automatically, and fits perfectly since data only flows server→client. It Scale Much better than WebSockets. WebSockets would be overkill for this use case.
 
-## Setup
+## Fairness / Anti-Abuse
 
-### Prerequisites
+Two mechanisms to reduce repeat and abusive voting:
 
-- [Bun](https://bun.sh) v1.0+
-- A PostgreSQL database (e.g. [Neon](https://neon.tech) free tier)
+### 1. Browser Fingerprint + Database Unique Constraint
 
-### 1. Clone & install
+A deterministic hash is generated client-side from browser signals (user agent, screen dimensions, timezone, hardware concurrency, etc.) and sent with the vote. The database enforces a `UNIQUE(poll_id, voter_fingerprint)` constraint — if the same fingerprint tries to vote twice on the same poll, the insert is rejected at the DB level (Prisma `P2002` error).
 
-```bash
-git clone <repo-url> && cd poll-app
+**Prevents:** Same browser voting twice on the same poll. The constraint is enforced server-side regardless of client behavior, so even race conditions between concurrent requests are safe.
 
-cd server && bun install
-cd ../client && bun install
-```
+### 2. IP-Based Rate Limiting
 
-### 2. Configure environment
+`express-rate-limit` middleware scoped per IP per poll — max 3 votes per IP per poll per hour. A separate limiter caps poll creation at 10 per IP per day. In production, `trust proxy` is restricted to `"loopback"` so external clients can't spoof their IP via `X-Forwarded-For`.
 
-```bash
-cp server/.env.example server/.env
-```
+**Prevents:** Scripted vote flooding from a single IP. Even if someone forges fingerprints, they're capped at 3 per hour from one address.
 
-Edit `server/.env` with your Neon database URLs.
+## Edge Cases Handled
 
-### 3. Run database migrations
+- **Duplicate vote race condition** — Two near-simultaneous votes from the same fingerprint: the DB unique constraint rejects the second, not application-level locking.
+- **Invalid option submission** — Server verifies the `optionId` actually belongs to the given `pollId` before inserting. Prevents cross-poll vote injection.
+- **SSE reconnection** — Client auto-reconnects on connection drop with a retry loop, so users don't get stale results after network blips.
+- **Proxy IP spoofing** — `trust proxy` only enabled in production, restricted to loopback. Clients can't forge `X-Forwarded-For` to bypass rate limits.
+- **Payload abuse** — 10KB body limit on all JSON endpoints.
+- **Input validation** — Zod schemas validate all inputs server-side (UUID format for IDs, string lengths, alphanumeric fingerprint format). Client-side validation mirrors this but is not relied upon.
+- **Poll not found / invalid link** — 404 handling for non-existent polls with a fallback UI.
 
-```bash
-cd server
-bun run db:generate
-bun run db:migrate
-```
+## Known Limitations / Future Improvements
 
-### 4. Start development
+- **Fingerprint** A server-side fingerprint (e.g. hashing IP + User-Agent on the backend) or integrating FingerprintJS Pro would be harder to spoof.
+- **Rate limit.** Swapping to a Redis-backed store (`rate-limit-redis`) would survive restarts and work across multiple server instances.
 
-```bash
-# Terminal 1 — Backend
-cd server && bun run dev
-
-# Terminal 2 — Frontend
-cd client && bun run dev
-```
-
-Frontend runs on `http://localhost:5173`, backend on `http://localhost:3000`.
-
-## Anti-Abuse & Security
-
-**Browser Fingerprinting** — Generates a deterministic hash from browser properties (user agent, screen size, timezone, etc.). Enforced via database unique constraint `(poll_id, voter_fingerprint)`. Prevents casual repeat voting.
-
-**IP Rate Limiting** — 3 votes per IP per poll per hour, 10 poll creations per IP per day. Prevents script-based flooding.
-
-**Proxy-aware IP detection** — `trust proxy` is only enabled in production and restricted to loopback, preventing IP spoofing via `X-Forwarded-For`.
-
-**Request Size Limit** — 10KB body limit on all JSON endpoints.
-
-**Known limitations** — Fingerprinting is client-side and can be spoofed via direct API calls. IP rate limits use in-memory storage (reset on restart). Advanced users with VPNs + spoofing tools can bypass both layers. However, these measures stop the majority of casual abuse without adding significant complexity.
+- **SSE Scalability** Each viewer holds an open connection to the single server. Redis Pub/Sub for broadcast coordination would allow multiple backend instances.
 
 ## Project Structure
 
@@ -89,7 +66,6 @@ Frontend runs on `http://localhost:5173`, backend on `http://localhost:3000`.
         ├── middleware/  # validation, rate limiting, error handling
         └── lib/         # Prisma client, SSE manager, constants
 ```
-
 ## Scaling Strategy
 
 Current setup: Vercel (frontend) + single Azure VM (backend) + Neon PostgreSQL.
@@ -108,4 +84,3 @@ To scale beyond that we need to move SSE coordination off the single VM and into
 
 4. **Reduce DB round-trips** — The vote flow currently does 3 queries (verify option → insert vote → fetch results). The verify step can be dropped — the FK constraint already rejects invalid options. That's a free 33% reduction.
 
-The frontend on Vercel already scales automatically. Neon PostgreSQL auto-scales on the read side. The server is the only piece that needs manual scaling work.
