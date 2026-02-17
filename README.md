@@ -61,13 +61,17 @@ cd client && bun run dev
 
 Frontend runs on `http://localhost:5173`, backend on `http://localhost:3000`.
 
-## Anti-Abuse
+## Anti-Abuse & Security
 
-**Browser Fingerprinting** — Generates a deterministic hash from browser properties (user agent, screen size, timezone, etc.). Enforced via database unique constraint `(poll_id, voter_fingerprint)`. Prevents casual repeat voting (refresh, incognito).
+**Browser Fingerprinting** — Generates a deterministic hash from browser properties (user agent, screen size, timezone, etc.). Enforced via database unique constraint `(poll_id, voter_fingerprint)`. Prevents casual repeat voting.
 
 **IP Rate Limiting** — 3 votes per IP per poll per hour, 10 poll creations per IP per day. Prevents script-based flooding.
 
-**Known limitations** — Advanced users with VPNs + spoofing tools can bypass both layers. This is acceptable for the scope of this project.
+**Proxy-aware IP detection** — `trust proxy` is only enabled in production and restricted to loopback, preventing IP spoofing via `X-Forwarded-For`.
+
+**Request Size Limit** — 10KB body limit on all JSON endpoints.
+
+**Known limitations** — Fingerprinting is client-side and can be spoofed via direct API calls. IP rate limits use in-memory storage (reset on restart). Advanced users with VPNs + spoofing tools can bypass both layers. However, these measures stop the majority of casual abuse without adding significant complexity.
 
 ## Project Structure
 
@@ -76,13 +80,32 @@ Frontend runs on `http://localhost:5173`, backend on `http://localhost:3000`.
 │   └── src/
 │       ├── pages/       # CreatePollPage, ViewPollPage, NotFoundPage
 │       ├── hooks/       # useRealtimePoll (SSE)
-│       ├── lib/         # API client, utilities
+│       ├── lib/         # API client, fingerprint, utilities
 │       └── components/  # shadcn/ui components
-├── server/          # Express backend (Bun)
-│   └── src/
-│       ├── routes/      # polls, votes, stream (SSE)
-│       ├── services/    # pollService, voteService
-│       ├── middleware/  # validation, rate limiting, error handling
-│       └── lib/         # Prisma client, SSE manager, constants
-└── shared/          # Shared TypeScript types
+└── server/          # Express backend (Bun)
+    └── src/
+        ├── routes/      # polls, votes, stream (SSE)
+        ├── services/    # pollService, voteService
+        ├── middleware/  # validation, rate limiting, error handling
+        └── lib/         # Prisma client, SSE manager, constants
 ```
+
+## Scaling Strategy
+
+Current setup: Vercel (frontend) + single Azure VM (backend) + Neon PostgreSQL.
+
+This handles low-to-moderate traffic fine. Here's what will breaks first and how to scale it:
+
+**SSE connections are the bottleneck.** Each viewer holds an open HTTP connection on the VM.
+
+To scale beyond that we need to move SSE coordination off the single VM and into a shared system:
+
+1. **Add Redis** — Move SSE broadcast coordination to Redis Pub/Sub. Each server instance subscribes to poll channels and broadcasts to its own local connections. This unlocks horizontal scaling — multiple VMs behind Azure Load Balancer, all sharing state through Redis.
+
+2. **Persistent rate limiting** — Swap `express-rate-limit`'s in-memory store for `rate-limit-redis`. Limits survive restarts and stay consistent across instances.
+
+3. **Cache poll results** — A hot poll gets the same `getPollResults()` query on every SSE connect and every page load. A short-TTL cache (Redis or in-memory, 2-5s) cuts repeated DB queries to near zero.
+
+4. **Reduce DB round-trips** — The vote flow currently does 3 queries (verify option → insert vote → fetch results). The verify step can be dropped — the FK constraint already rejects invalid options. That's a free 33% reduction.
+
+The frontend on Vercel already scales automatically. Neon PostgreSQL auto-scales on the read side. The server is the only piece that needs manual scaling work.
