@@ -18,11 +18,15 @@ app.use(
   })
 );
 
-// Body parsing
-app.use(express.json());
+// Body parsing — 10KB limit (polls and votes are tiny payloads)
+app.use(express.json({ limit: "10kb" }));
 
-// Trust proxy for accurate IP detection (needed behind reverse proxy)
-app.set("trust proxy", 1);
+// Trust proxy only in production where Nginx/Azure LB sits in front.
+// "loopback" only trusts X-Forwarded-For from 127.0.0.1/::1,
+// preventing clients from spoofing their IP to bypass rate limiting.
+if (NODE_ENV === "production") {
+  app.set("trust proxy", "loopback");
+}
 
 // Health check
 app.get("/health", (_req, res) => {
