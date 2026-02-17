@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { createPoll, getPollById } from "../services/pollService";
-import { validate, validateParams, createPollSchema, pollIdParamSchema } from "../middleware/validator";
-import { pollCreationRateLimiter } from "../middleware/rateLimiter";
-import { CORS_ORIGIN } from "../lib/constants";
+import { createPoll, getPollById } from "@/services/pollService";
+import { validate, validateParams, createPollSchema, pollIdParamSchema } from "@/middleware/validator";
+import { pollCreationRateLimiter } from "@/middleware/rateLimiter";
+import { CORS_ORIGIN } from "@/lib/constants";
 
 const router = Router();
 

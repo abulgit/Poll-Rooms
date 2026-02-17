@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import type { PollResults } from "../../../shared/types/api";
+import type { PollResults } from "@/types";
 
 class SSEManager {
   private connections: Map<string, Set<Response>> = new Map();

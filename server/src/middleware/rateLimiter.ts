@@ -4,7 +4,7 @@ import {
   VOTE_RATE_LIMIT_MAX,
   POLL_CREATION_RATE_LIMIT_WINDOW_MS,
   POLL_CREATION_RATE_LIMIT_MAX,
-} from "../lib/constants";
+} from "@/lib/constants";
 
 export const voteRateLimiter = rateLimit({
   windowMs: VOTE_RATE_LIMIT_WINDOW_MS,

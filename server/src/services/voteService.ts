@@ -1,6 +1,6 @@
-import { prisma } from "../lib/db";
-import type { PollResults } from "../../../shared/types/api";
-import { getPollResults } from "./pollService";
+import { prisma } from "@/lib/db";
+import type { PollResults } from "@/types";
+import { getPollResults } from "@/services/pollService";
 
 interface VoteResult {
   success: boolean;

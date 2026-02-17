@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { validateParams, pollIdParamSchema } from "../middleware/validator";
-import { getPollResults } from "../services/pollService";
-import { sseManager } from "../lib/sse";
+import { validateParams, pollIdParamSchema } from "@/middleware/validator";
+import { getPollResults } from "@/services/pollService";
+import { sseManager } from "@/lib/sse";
 
 const router = Router();
 

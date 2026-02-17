@@ -1,5 +1,5 @@
-import { prisma } from "../lib/db";
-import type { Poll, PollResults } from "../../../shared/types/api";
+import { prisma } from "@/lib/db";
+import type { Poll, PollResults } from "@/types";
 
 export async function createPoll(
   question: string,
@@ -9,7 +9,8 @@ export async function createPoll(
   const poll = await prisma.poll.create({
     data: {
       question,
-      creatorIp: creatorIp ?? null,
+      creatorIp:
+       creatorIp ?? null,
       options: {
         create: options.map((text, index) => ({
           text,

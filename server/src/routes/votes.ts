@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { submitVote } from "../services/voteService";
-import { validate, validateParams, voteSchema, pollIdParamSchema } from "../middleware/validator";
-import { voteRateLimiter } from "../middleware/rateLimiter";
-import { sseManager } from "../lib/sse";
+import { submitVote } from "@/services/voteService";
+import { validate, validateParams, voteSchema, pollIdParamSchema } from "@/middleware/validator";
+import { voteRateLimiter } from "@/middleware/rateLimiter";
+import { sseManager } from "@/lib/sse";
 
 const router = Router();
 

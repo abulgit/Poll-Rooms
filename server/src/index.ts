@@ -1,11 +1,11 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { PORT, CORS_ORIGIN, NODE_ENV } from "./lib/constants";
-import { errorHandler } from "./middleware/errorHandler";
-import pollRoutes from "./routes/polls";
-import voteRoutes from "./routes/votes";
-import streamRoutes from "./routes/stream";
+import { PORT, CORS_ORIGIN, NODE_ENV } from "@/lib/constants";
+import { errorHandler } from "@/middleware/errorHandler";
+import pollRoutes from "@/routes/polls";
+import voteRoutes from "@/routes/votes";
+import streamRoutes from "@/routes/stream";
 
 const app = express();
 

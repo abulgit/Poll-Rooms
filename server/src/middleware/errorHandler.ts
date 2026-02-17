@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { NODE_ENV } from "../lib/constants";
+import { NODE_ENV } from "@/lib/constants";
 
 export function errorHandler(
   err: Error,

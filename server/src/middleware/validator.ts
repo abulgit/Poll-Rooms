@@ -9,7 +9,7 @@ import {
   MAX_OPTION_LENGTH,
   FINGERPRINT_MIN_LENGTH,
   FINGERPRINT_MAX_LENGTH,
-} from "../lib/constants";
+} from "@/lib/constants";
 
 export const createPollSchema = z.object({
   question: z
